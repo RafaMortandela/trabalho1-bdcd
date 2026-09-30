@@ -1,0 +1,18 @@
+# Ambiente Python
+.venv/
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+
+# Dados brutos: grandes e regeneraveis pelos scripts de coleta/
+dados/*.csv
+dados/*.zip
+dados/pagamentos_*.jsonl
+dados/dump_colab/
+
+# Saidas de execucoes que nao entram no relatorio
+saidas/coleta_*.txt
+
+# Sistema
+.DS_Store
+*.swp

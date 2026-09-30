@@ -1,0 +1,75 @@
+==============================================================================
+ VALIDACAO NUMERICA - MongoDB conferido contra os arquivos originais
+==============================================================================
+
+Relendo os CSV originais em Python puro (sem passar pelo MongoDB),
+um processo por competencia...
+  202606: 19.217.521 linhas
+  202607: 19.147.563 linhas
+  202608: 18.809.420 linhas
+
+TESTE 1 - contagem de documentos por competencia
+  [OK ] competencia 202606
+         CSV: 19.217.521 linhas | MongoDB: 19.217.521 documentos
+  [OK ] competencia 202607
+         CSV: 19.147.563 linhas | MongoDB: 19.147.563 documentos
+  [OK ] competencia 202608
+         CSV: 18.809.420 linhas | MongoDB: 18.809.420 documentos
+  [OK ] total das tres competencias
+         CSV: 57.174.504 | MongoDB: 57.174.504
+
+TESTE 2 - soma dos valores por UF (Python x $group)
+  [OK ] competencia 202606: 27 UFs conferidas
+         maior diferenca encontrada: R$ 0.0000 (tolerancia R$ 0.05)
+  [OK ] competencia 202607: 27 UFs conferidas
+         maior diferenca encontrada: R$ 0.0000 (tolerancia R$ 0.05)
+  [OK ] competencia 202608: 27 UFs conferidas
+         maior diferenca encontrada: R$ 0.0000 (tolerancia R$ 0.05)
+
+TESTE 3 - soma das UFs x total nacional na mesma agregacao
+  [OK ] competencia 202606
+         soma das 27 UFs: R$ 12.992.522.373,00 | total nacional: R$ 12.992.522.373,00
+  [OK ] competencia 202607
+         soma das 27 UFs: R$ 12.966.159.697,00 | total nacional: R$ 12.966.159.697,00
+  [OK ] competencia 202608
+         soma das 27 UFs: R$ 12.763.249.759,00 | total nacional: R$ 12.763.249.759,00
+
+TESTE 4 - populacao somada dos municipios x populacao do Brasil (IBGE)
+  [OK ] populacao estimada 2026
+         soma dos 5.570 municipios: 214.211.951 | Brasil (nivel N1 da API): 214.211.951 | diferenca: 0 habitantes (0.0000%)
+
+TESTE 5 - hipotese 'uma parcela regular por familia por mes' (UF = AC)
+  [OK ] Acre, competencia 202606
+         parcelas regulares no CSV: 126.238 | no MongoDB: 126.238
+         NIS distintos no CSV: 126.235 | no MongoDB: 126.235
+         parcelas a mais que NIS: 3 (0.0024%)
+         As duas fontes concordam exatamente entre si. A pequena diferenca entre
+         parcelas e NIS vem do dado de origem: um NIS recebeu 4 parcelas regulares
+         no mes. em 4 municipios distintos do Acre. Com desvio abaixo de 0.01%.
+         contar parcelas regulares continua sendo uma medida valida do numero de
+         familias atendidas - premissa usada nas consultas 1 e 2.
+
+TESTE 6 - integridade referencial do cruzamento entre as bases
+  [OK ] todo cod_ibge dos pagamentos existe em municipios_ibge
+         pagamentos sem cod_ibge: 0
+         municipios distintos nos pagamentos: 5.571
+         municipios no cadastro do IBGE: 5.571
+         codigos orfaos: 0
+
+==============================================================================
+ RESULTADO: 13 de 13 verificacoes aprovadas
+==============================================================================
+  OK      competencia 202606
+  OK      competencia 202607
+  OK      competencia 202608
+  OK      total das tres competencias
+  OK      competencia 202606: 27 UFs conferidas
+  OK      competencia 202607: 27 UFs conferidas
+  OK      competencia 202608: 27 UFs conferidas
+  OK      competencia 202606
+  OK      competencia 202607
+  OK      competencia 202608
+  OK      populacao estimada 2026
+  OK      Acre, competencia 202606
+  OK      todo cod_ibge dos pagamentos existe em municipios_ibge
+

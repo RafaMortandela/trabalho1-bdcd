@@ -1,0 +1,484 @@
+
+====================================================================================================
+ BASE 1 / CONSULTA 1 - Onde o Novo Bolsa Familia pesa mais, por UF
+====================================================================================================
+
+OBJETIVO: Ordenar as 27 unidades da federacao pelo valor pago por habitante na competencia 202608. A consulta cruza as duas bases: agrega os pagamentos do Portal da Transparencia e busca populacao e PIB no cadastro do IBGE com um $lookup correlacionado (subconsulta que ja soma a populacao de todos os municipios da UF). Tambem separa o que foi pago no mes de referencia corrente do que foi pago de forma retroativa.
+
+PIPELINE:
+  [
+    {
+      "$match": {
+        "competencia": 202608
+      }
+    },
+    {
+      "$group": {
+        "_id": "$uf",
+        "total_pago": {
+          "$sum": "$valor"
+        },
+        "parcelas": {
+          "$sum": 1
+        },
+        "parcelas_regulares": {
+          "$sum": {
+            "$cond": [
+              {
+                "$eq": [
+                  "$retroativo",
+                  false
+                ]
+              },
+              1,
+              0
+            ]
+          }
+        },
+        "parcelas_retroativas": {
+          "$sum": {
+            "$cond": [
+              {
+                "$eq": [
+                  "$retroativo",
+                  true
+                ]
+              },
+              1,
+              0
+            ]
+          }
+        },
+        "valor_retroativo": {
+          "$sum": {
+            "$cond": [
+              {
+                "$eq": [
+                  "$retroativo",
+                  true
+                ]
+              },
+              "$valor",
+              0
+            ]
+          }
+        },
+        "valor_medio_parcela": {
+          "$avg": "$valor"
+        },
+        "maior_parcela": {
+          "$max": "$valor"
+        }
+      }
+    },
+    {
+      "$lookup": {
+        "from": "municipios_ibge",
+        "let": {
+          "uf": "$_id"
+        },
+        "pipeline": [
+          {
+            "$match": {
+              "$expr": {
+                "$eq": [
+                  "$uf_sigla",
+                  "$$uf"
+                ]
+              }
+            }
+          },
+          {
+            "$group": {
+              "_id": null,
+              "populacao": {
+                "$sum": "$populacao_2026"
+              },
+              "pib_mil_reais": {
+                "$sum": "$pib_2023_mil_reais"
+              },
+              "municipios": {
+                "$sum": 1
+              }
+            }
+          }
+        ],
+        "as": "ibge"
+      }
+    },
+    {
+      "$addFields": {
+        "ibge": {
+          "$first": "$ibge"
+        }
+      }
+    },
+    {
+      "$addFields": {
+        "valor_per_capita": {
+          "$divide": [
+            "$total_pago",
+            "$ibge.populacao"
+          ]
+        },
+        "familias_por_100_hab": {
+          "$multiply": [
+            100,
+            {
+              "$divide": [
+                "$parcelas_regulares",
+                "$ibge.populacao"
+              ]
+            }
+          ]
+        },
+        "peso_no_pib_pct": {
+          "$multiply": [
+            100,
+            {
+              "$divide": [
+                {
+                  "$multiply": [
+                    "$total_pago",
+                    12
+                  ]
+                },
+                {
+                  "$multiply": [
+                    "$ibge.pib_mil_reais",
+                    1000
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "$sort": {
+        "valor_per_capita": -1
+      }
+    },
+    {
+      "$project": {
+        "_id": 0,
+        "uf": "$_id",
+        "regiao_municipios": "$ibge.municipios",
+        "populacao": "$ibge.populacao",
+        "parcelas": 1,
+        "parcelas_regulares": 1,
+        "parcelas_retroativas": 1,
+        "total_pago": 1,
+        "valor_medio_parcela": 1,
+        "valor_per_capita": 1,
+        "familias_por_100_hab": 1,
+        "peso_no_pib_pct": 1
+      }
+    }
+  ]
+
+Tempo de execucao: 33.28 s  |  documentos retornados: 27
+
+UF      Populacao     Familias  Fam./100 hab    Total pago no mes  Por habitante  % do PIB/ano
+---  ------------  -----------  ------------  -------------------  -------------  ------------
+MA      7.024.557    1.144.771         16,30       R$ 797.754.248      R$ 113,57         6,42%
+PI      3.392.617      537.573         15,85       R$ 363.458.506      R$ 107,13         5,39%
+AL      3.221.128      499.212         15,50       R$ 343.850.004      R$ 106,75         4,60%
+BA     14.889.472    2.336.520         15,69     R$ 1.558.392.484      R$ 104,66         4,34%
+PE      9.583.176    1.479.130         15,43       R$ 994.566.644      R$ 103,78         4,41%
+SE      2.307.255      355.522         15,41       R$ 238.428.800      R$ 103,34         4,70%
+AP        809.953      113.427         14,00        R$ 81.967.870      R$ 101,20         3,51%
+AC        887.794      123.984         13,97        R$ 89.674.058      R$ 101,01         4,09%
+AM      4.360.926      606.155         13,90       R$ 440.390.119      R$ 100,99         3,27%
+PB      4.182.828      620.637         14,84       R$ 418.329.416      R$ 100,01         5,18%
+PA      8.756.324    1.248.212         14,25       R$ 874.793.016       R$ 99,90         4,12%
+CE      9.302.211    1.343.219         14,44       R$ 898.630.158       R$ 96,60         4,64%
+RN      3.463.737      468.581         13,53       R$ 312.863.260       R$ 90,33         3,69%
+RR        761.012       74.740          9,82        R$ 55.100.907       R$ 72,40         2,63%
+TO      1.595.994      138.628          8,69        R$ 96.687.695       R$ 60,58         1,80%
+RJ     17.225.410    1.386.401          8,05       R$ 932.225.639       R$ 54,12         0,95%
+RO      1.757.338      122.211          6,95        R$ 83.076.073       R$ 47,27         1,30%
+MG     21.460.311    1.413.656          6,59       R$ 949.472.537       R$ 44,24         1,17%
+ES      4.150.692      270.644          6,52       R$ 182.796.514       R$ 44,04         1,05%
+MS      2.946.317      185.295          6,29       R$ 129.375.581       R$ 43,91         0,84%
+GO      7.495.033      445.847          5,95       R$ 305.412.611       R$ 40,75         1,09%
+DF      3.009.996      162.476          5,40       R$ 112.574.288       R$ 37,40         0,37%
+MT      3.950.330      206.819          5,24       R$ 144.676.924       R$ 36,62         0,64%
+SP     46.179.008    2.223.542          4,82     R$ 1.501.046.108       R$ 32,50         0,52%
+RS     11.233.317      522.822          4,65       R$ 351.646.118       R$ 31,30         0,65%
+PR     11.952.456      545.893          4,57       R$ 368.291.479       R$ 30,81         0,66%
+SC      8.312.759      202.709          2,44       R$ 137.768.702       R$ 16,57         0,32%
+---  ------------  -----------  ------------  -------------------  -------------  ------------
+27 linha(s)
+
+LEITURA DO RESULTADO: as primeiras linhas concentram os estados do Norte e
+do Nordeste, onde o programa transfere mais reais por habitante e responde
+por uma fatia maior do PIB local.
+
+====================================================================================================
+ BASE 1 / CONSULTA 2 - Municipios mais dependentes e relacao com o PIB
+====================================================================================================
+
+OBJETIVO: Responder duas perguntas em uma unica passada pela colecao, com $facet: (1) quais municipios com pelo menos 20 mil habitantes tem a maior proporcao de familias atendidas, e (2) como essa proporcao se comporta por faixa de PIB per capita ($bucket). O recorte de 20 mil habitantes evita que municipios minusculos dominem o ranking por efeito de escala.
+
+PIPELINE:
+  [
+    {
+      "$match": {
+        "competencia": 202608
+      }
+    },
+    {
+      "$group": {
+        "_id": "$cod_ibge",
+        "total_pago": {
+          "$sum": "$valor"
+        },
+        "parcelas_regulares": {
+          "$sum": {
+            "$cond": [
+              {
+                "$eq": [
+                  "$retroativo",
+                  false
+                ]
+              },
+              1,
+              0
+            ]
+          }
+        },
+        "valor_medio_parcela": {
+          "$avg": "$valor"
+        }
+      }
+    },
+    {
+      "$lookup": {
+        "from": "municipios_ibge",
+        "localField": "_id",
+        "foreignField": "_id",
+        "as": "m"
+      }
+    },
+    {
+      "$unwind": "$m"
+    },
+    {
+      "$match": {
+        "m.populacao_2026": {
+          "$gte": 20000
+        }
+      }
+    },
+    {
+      "$addFields": {
+        "municipio": "$m.nome",
+        "uf": "$m.uf_sigla",
+        "regiao": "$m.regiao",
+        "populacao": "$m.populacao_2026",
+        "pib_per_capita": "$m.pib_per_capita",
+        "familias_por_100_hab": {
+          "$multiply": [
+            100,
+            {
+              "$divide": [
+                "$parcelas_regulares",
+                "$m.populacao_2026"
+              ]
+            }
+          ]
+        },
+        "valor_per_capita": {
+          "$divide": [
+            "$total_pago",
+            "$m.populacao_2026"
+          ]
+        }
+      }
+    },
+    {
+      "$facet": {
+        "mais_dependentes": [
+          {
+            "$sort": {
+              "familias_por_100_hab": -1
+            }
+          },
+          {
+            "$limit": 15
+          },
+          {
+            "$project": {
+              "_id": 0,
+              "cod_ibge": "$_id",
+              "municipio": 1,
+              "uf": 1,
+              "populacao": 1,
+              "parcelas_regulares": 1,
+              "familias_por_100_hab": 1,
+              "valor_per_capita": 1,
+              "pib_per_capita": 1
+            }
+          }
+        ],
+        "menos_dependentes": [
+          {
+            "$sort": {
+              "familias_por_100_hab": 1
+            }
+          },
+          {
+            "$limit": 10
+          },
+          {
+            "$project": {
+              "_id": 0,
+              "cod_ibge": "$_id",
+              "municipio": 1,
+              "uf": 1,
+              "populacao": 1,
+              "parcelas_regulares": 1,
+              "familias_por_100_hab": 1,
+              "valor_per_capita": 1,
+              "pib_per_capita": 1
+            }
+          }
+        ],
+        "por_faixa_de_pib_per_capita": [
+          {
+            "$match": {
+              "pib_per_capita": {
+                "$ne": null
+              }
+            }
+          },
+          {
+            "$bucket": {
+              "groupBy": "$pib_per_capita",
+              "boundaries": [
+                0,
+                15000,
+                25000,
+                40000,
+                70000,
+                120000,
+                10000000
+              ],
+              "default": "sem PIB informado",
+              "output": {
+                "municipios": {
+                  "$sum": 1
+                },
+                "populacao": {
+                  "$sum": "$populacao"
+                },
+                "familias": {
+                  "$sum": "$parcelas_regulares"
+                },
+                "total_pago": {
+                  "$sum": "$total_pago"
+                },
+                "media_familias_por_100_hab": {
+                  "$avg": "$familias_por_100_hab"
+                }
+              }
+            }
+          }
+        ],
+        "resumo": [
+          {
+            "$group": {
+              "_id": null,
+              "municipios": {
+                "$sum": 1
+              },
+              "familias": {
+                "$sum": "$parcelas_regulares"
+              },
+              "total_pago": {
+                "$sum": "$total_pago"
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+
+Tempo de execucao: 22.42 s  |  documentos retornados: 1
+
+-- Municipios com a maior proporcao de familias atendidas (>= 20 mil hab.) -------------------------
+
+Municipio                   UF    Populacao   Familias  Fam./100 hab      Pago/hab   PIB/hab (ano)
+--------------------------  ---  ----------  ---------  ------------  ------------  --------------
+Autazes                     AM       46.641     15.672         33,60     R$ 234,17       R$ 12.542
+Mocajuba                    PA       28.982      9.005         31,07     R$ 221,82       R$ 16.574
+Maragogipe                  BA       36.875     10.735         29,11     R$ 188,98       R$ 12.996
+Pedro do Rosário            MA       24.989      7.267         29,08     R$ 202,98        R$ 9.036
+Ponta de Pedras             PA       25.707      7.152         27,82     R$ 194,31       R$ 12.191
+Irará                       BA       29.630      8.243         27,82     R$ 181,28       R$ 13.016
+Mari                        PB       22.212      6.145         27,67     R$ 184,21       R$ 13.644
+Inajá                       PE       28.008      7.719         27,56     R$ 185,88        R$ 9.862
+Feira Nova                  PE       22.271      6.069         27,25     R$ 180,43       R$ 12.327
+Porto da Folha              SE       27.345      7.432         27,18     R$ 183,74       R$ 23.324
+Palmeirândia                MA       21.702      5.887         27,13     R$ 179,81        R$ 8.672
+Paratinga                   BA       30.689      8.306         27,07     R$ 185,22       R$ 10.682
+Santa Maria da Boa Vista    PE       42.874     11.522         26,87     R$ 183,34       R$ 18.237
+Tucano                      BA       51.067     13.668         26,76     R$ 177,32       R$ 16.126
+Tracuateua                  PA       30.612      8.135         26,57     R$ 179,87       R$ 12.794
+--------------------------  ---  ----------  ---------  ------------  ------------  --------------
+15 linha(s)
+
+-- Municipios com a menor proporcao de familias atendidas (>= 20 mil hab.) -------------------------
+
+Municipio                   UF    Populacao   Familias  Fam./100 hab      Pago/hab   PIB/hab (ano)
+--------------------------  ---  ----------  ---------  ------------  ------------  --------------
+Pomerode                    SC       37.602         61          0,16       R$ 0,96       R$ 84.694
+Bento Gonçalves             RS      127.980        693          0,54       R$ 3,45       R$ 70.813
+Carlos Barbosa              RS       31.586        178          0,56       R$ 3,59      R$ 120.784
+Pinhalzinho                 SC       24.419        147          0,60       R$ 3,86       R$ 79.516
+Dois Irmãos                 RS       31.805        209          0,66       R$ 4,31       R$ 82.991
+Veranópolis                 RS       24.554        163          0,66       R$ 3,90       R$ 97.557
+Timbó                       SC       50.613        346          0,68       R$ 4,39       R$ 54.093
+Ibirama                     SC       21.132        147          0,70       R$ 4,36       R$ 36.646
+Ivoti                       RS       23.567        166          0,70       R$ 4,34       R$ 65.298
+Cerquilho                   SP       46.547        337          0,72       R$ 4,36       R$ 62.116
+--------------------------  ---  ----------  ---------  ------------  ------------  --------------
+10 linha(s)
+
+-- Faixas de PIB per capita do municipio ($bucket) -------------------------------------------------
+
+Faixa de PIB per capita (R$/ano)  Municipios      Populacao      Familias  Media fam./100 hab
+-------------------------------  ----------  -------------  ------------  ------------------
+ate 15.000                              287     11.336.138     2.037.523               19,03
+15.000 a 25.000                         413     26.394.486     3.554.008               15,36
+25.000 a 40.000                         366     41.417.145     3.725.910                8,68
+40.000 a 70.000                         467     59.100.745     3.145.997                5,29
+70.000 a 120.000                        166     35.332.296     1.869.895                5,17
+acima de 120.000                         56      8.662.353       479.297                6,80
+-------------------------------  ----------  -------------  ------------  ------------------
+6 linha(s)
+
+LEITURA DO RESULTADO: a media de familias por 100 habitantes cai forte e de
+forma continua ate a faixa de 70 mil a 120 mil reais de PIB por habitante -
+de cerca de 19 para cerca de 5 familias por 100 habitantes. O programa esta,
+portanto, concentrado nos municipios de economia mais fraca.
+
+A ULTIMA FAIXA E UMA EXCECAO IMPORTANTE e sobe de novo. Ela reune apenas 56
+municipios e mistura dois tipos muito diferentes: cidades industriais onde a
+riqueza chega as familias (Paulinia/SP, com 3,2 familias por 100 habitantes,
+e Louveira/SP, com 2,9) e cidades cujo PIB e inflado por refinaria, royalties
+de petroleo ou uma unica grande planta, sem que isso vire renda domestica -
+Sao Francisco do Conde/BA tem PIB de R$ 642 mil por habitante e 19,2 familias
+por 100 habitantes; Sao Joao da Barra/RJ tem R$ 361 mil e 15,1.
+Licao metodologica: PIB per capita mede producao no territorio, nao renda das
+pessoas. Onde os dois se descolam, o indicador engana - e o dado do programa
+revela a pobreza que a media do PIB esconde.
+{
+  _id: null,
+  municipios: 1755,
+  familias: 14812630,
+  total_pago: 10058082412
+}

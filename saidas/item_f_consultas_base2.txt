@@ -1,0 +1,465 @@
+
+====================================================================================================
+ BASE 2 / CONSULTA 4 - Em que tamanho de cidade o brasileiro mora
+====================================================================================================
+
+OBJETIVO: Classificar os 5.570 municipios em faixas de porte populacional e medir, em cada faixa, quantos municipios existem, quanta gente vive ali e qual a participacao no total do pais. O pipeline cria a faixa com $switch, cruza faixa e regiao em um $group de chave composta, reagrupa com $push para montar o detalhe regional e usa $setWindowFields para obter o total nacional sem uma segunda consulta.
+
+PIPELINE:
+  [
+    {
+      "$match": {
+        "populacao_2026": {
+          "$ne": null
+        }
+      }
+    },
+    {
+      "$addFields": {
+        "faixa": {
+          "$switch": {
+            "branches": [
+              {
+                "case": {
+                  "$lt": [
+                    "$populacao_2026",
+                    5000
+                  ]
+                },
+                "then": "1. ate 5 mil"
+              },
+              {
+                "case": {
+                  "$lt": [
+                    "$populacao_2026",
+                    10000
+                  ]
+                },
+                "then": "2. 5 a 10 mil"
+              },
+              {
+                "case": {
+                  "$lt": [
+                    "$populacao_2026",
+                    20000
+                  ]
+                },
+                "then": "3. 10 a 20 mil"
+              },
+              {
+                "case": {
+                  "$lt": [
+                    "$populacao_2026",
+                    50000
+                  ]
+                },
+                "then": "4. 20 a 50 mil"
+              },
+              {
+                "case": {
+                  "$lt": [
+                    "$populacao_2026",
+                    100000
+                  ]
+                },
+                "then": "5. 50 a 100 mil"
+              },
+              {
+                "case": {
+                  "$lt": [
+                    "$populacao_2026",
+                    500000
+                  ]
+                },
+                "then": "6. 100 a 500 mil"
+              }
+            ],
+            "default": "7. acima de 500 mil"
+          }
+        }
+      }
+    },
+    {
+      "$group": {
+        "_id": {
+          "faixa": "$faixa",
+          "regiao": "$regiao"
+        },
+        "municipios": {
+          "$sum": 1
+        },
+        "populacao": {
+          "$sum": "$populacao_2026"
+        }
+      }
+    },
+    {
+      "$group": {
+        "_id": "$_id.faixa",
+        "municipios": {
+          "$sum": "$municipios"
+        },
+        "populacao": {
+          "$sum": "$populacao"
+        },
+        "por_regiao": {
+          "$push": {
+            "regiao": "$_id.regiao",
+            "municipios": "$municipios"
+          }
+        }
+      }
+    },
+    {
+      "$setWindowFields": {
+        "sortBy": {
+          "_id": 1
+        },
+        "output": {
+          "municipios_brasil": {
+            "$sum": "$municipios",
+            "window": {
+              "documents": [
+                "unbounded",
+                "unbounded"
+              ]
+            }
+          },
+          "populacao_brasil": {
+            "$sum": "$populacao",
+            "window": {
+              "documents": [
+                "unbounded",
+                "unbounded"
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "$addFields": {
+        "pct_municipios": {
+          "$multiply": [
+            100,
+            {
+              "$divide": [
+                "$municipios",
+                "$municipios_brasil"
+              ]
+            }
+          ]
+        },
+        "pct_populacao": {
+          "$multiply": [
+            100,
+            {
+              "$divide": [
+                "$populacao",
+                "$populacao_brasil"
+              ]
+            }
+          ]
+        },
+        "media_habitantes": {
+          "$divide": [
+            "$populacao",
+            "$municipios"
+          ]
+        },
+        "regiao_com_mais_municipios": {
+          "$reduce": {
+            "input": "$por_regiao",
+            "initialValue": {
+              "regiao": "-",
+              "municipios": 0
+            },
+            "in": {
+              "$cond": [
+                {
+                  "$gt": [
+                    "$$this.municipios",
+                    "$$value.municipios"
+                  ]
+                },
+                "$$this",
+                "$$value"
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "$sort": {
+        "_id": 1
+      }
+    },
+    {
+      "$project": {
+        "_id": 0,
+        "faixa": "$_id",
+        "municipios": 1,
+        "pct_municipios": 1,
+        "populacao": 1,
+        "pct_populacao": 1,
+        "media_habitantes": 1,
+        "regiao_com_mais_municipios": 1,
+        "municipios_brasil": 1,
+        "populacao_brasil": 1
+      }
+    }
+  ]
+
+Tempo de execucao: 0.02 s  |  documentos retornados: 7
+
+Faixa de porte        Municipios  % dos mun.       Populacao  % da pop.  Media hab./mun.  Regiao com mais mun.
+--------------------  ----------  ----------  --------------  ---------  ---------------  --------------------
+1. ate 5 mil               1.286       23,1%       4.330.543       2,0%            3.367  Sul                 
+2. 5 a 10 mil              1.181       21,2%       8.458.546       3,9%            7.162  Sudeste             
+3. 10 a 20 mil             1.349       24,2%      19.179.699       9,0%           14.218  Nordeste            
+4. 20 a 50 mil             1.068       19,2%      32.928.308      15,4%           30.832  Nordeste            
+5. 50 a 100 mil              349        6,3%      24.411.699      11,4%           69.948  Nordeste            
+6. 100 a 500 mil             289        5,2%      58.395.565      27,3%          202.061  Sudeste             
+7. acima de 500 mil           49        0,9%      66.507.591      31,0%        1.357.298  Sudeste             
+--------------------  ----------  ----------  --------------  ---------  ---------------  --------------------
+7 linha(s)
+
+LEITURA DO RESULTADO: a maior parte dos municipios brasileiros e pequena,
+mas a maior parte da populacao vive nas poucas cidades grandes. Esse
+contraste explica por que analises municipais precisam ser normalizadas
+por populacao - e nao comparadas em valores absolutos.
+
+====================================================================================================
+ BASE 2 / CONSULTA 5 - Campeao de crescimento do PIB em cada estado
+====================================================================================================
+
+OBJETIVO: Encontrar, em cada UF, o municipio de porte medio ou grande (>= 50 mil habitantes) que mais cresceu em PIB nominal entre 2015 e 2023. O pipeline faz $lookup com pipeline interno na serie historica, extrai as duas pontas com $filter e $arrayElemAt, calcula a variacao e usa $setWindowFields com $rank particionado por UF para escolher o primeiro colocado de cada estado.
+
+PIPELINE:
+  [
+    {
+      "$match": {
+        "populacao_2026": {
+          "$gte": 50000
+        }
+      }
+    },
+    {
+      "$lookup": {
+        "from": "pib_serie_ibge",
+        "localField": "cod_ibge",
+        "foreignField": "cod_ibge",
+        "pipeline": [
+          {
+            "$match": {
+              "ano": {
+                "$in": [
+                  2015,
+                  2023
+                ]
+              }
+            }
+          },
+          {
+            "$project": {
+              "_id": 0,
+              "ano": 1,
+              "pib_mil_reais": 1
+            }
+          }
+        ],
+        "as": "serie"
+      }
+    },
+    {
+      "$addFields": {
+        "pib_2015": {
+          "$arrayElemAt": [
+            {
+              "$map": {
+                "input": {
+                  "$filter": {
+                    "input": "$serie",
+                    "cond": {
+                      "$eq": [
+                        "$$this.ano",
+                        2015
+                      ]
+                    }
+                  }
+                },
+                "in": "$$this.pib_mil_reais"
+              }
+            },
+            0
+          ]
+        },
+        "pib_2023": {
+          "$arrayElemAt": [
+            {
+              "$map": {
+                "input": {
+                  "$filter": {
+                    "input": "$serie",
+                    "cond": {
+                      "$eq": [
+                        "$$this.ano",
+                        2023
+                      ]
+                    }
+                  }
+                },
+                "in": "$$this.pib_mil_reais"
+              }
+            },
+            0
+          ]
+        }
+      }
+    },
+    {
+      "$match": {
+        "pib_2015": {
+          "$gt": 0
+        },
+        "pib_2023": {
+          "$gt": 0
+        }
+      }
+    },
+    {
+      "$addFields": {
+        "crescimento_pct": {
+          "$multiply": [
+            100,
+            {
+              "$subtract": [
+                {
+                  "$divide": [
+                    "$pib_2023",
+                    "$pib_2015"
+                  ]
+                },
+                1
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "$setWindowFields": {
+        "partitionBy": "$uf_sigla",
+        "sortBy": {
+          "crescimento_pct": -1
+        },
+        "output": {
+          "posicao_na_uf": {
+            "$rank": {}
+          },
+          "crescimento_medio_da_uf": {
+            "$avg": "$crescimento_pct",
+            "window": {
+              "documents": [
+                "unbounded",
+                "unbounded"
+              ]
+            }
+          },
+          "municipios_avaliados_na_uf": {
+            "$sum": 1,
+            "window": {
+              "documents": [
+                "unbounded",
+                "unbounded"
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "$match": {
+        "posicao_na_uf": 1
+      }
+    },
+    {
+      "$addFields": {
+        "vantagem_sobre_a_media_da_uf": {
+          "$subtract": [
+            "$crescimento_pct",
+            "$crescimento_medio_da_uf"
+          ]
+        }
+      }
+    },
+    {
+      "$sort": {
+        "crescimento_pct": -1
+      }
+    },
+    {
+      "$project": {
+        "_id": 0,
+        "uf": "$uf_sigla",
+        "municipio": "$nome",
+        "regiao": 1,
+        "populacao_2026": 1,
+        "pib_2015": 1,
+        "pib_2023": 1,
+        "crescimento_pct": 1,
+        "crescimento_medio_da_uf": 1,
+        "municipios_avaliados_na_uf": 1,
+        "vantagem_sobre_a_media_da_uf": 1,
+        "participacao_adm_publica": 1
+      }
+    }
+  ]
+
+Tempo de execucao: 0.11 s  |  documentos retornados: 27
+
+UF   Municipio                  Pop. 2026  PIB 2015 (mi R$)  PIB 2023 (mi R$)  Crescimento  Media da UF  Avaliados
+---  ------------------------  ----------  ----------------  ----------------  -----------  -----------  ---------
+RJ   Saquarema                     95.355           2.065,6          64.701,1     3.032,3%       180,4%         37
+SP   São Sebastião                 84.514           3.410,0          17.400,6       410,3%        91,7%        138
+PA   Canaã dos Carajás             92.311           3.478,4          16.621,6       377,9%       119,5%         44
+CE   Itaitinga                     74.250             575,7           2.352,7       308,7%       108,2%         38
+MG   Extrema                       60.681           5.086,2          20.205,0       297,3%        91,0%         72
+MT   Campo Novo do Parecis         53.393           2.110,8           7.917,2       275,1%       151,7%         15
+SC   Araquari                      53.939           2.724,0           9.900,0       263,4%       113,8%         36
+PE   Goiana                        85.806           3.929,0          13.893,6       253,6%        88,1%         35
+ES   Viana                         79.611           1.810,3           5.957,5       229,1%        91,8%         12
+RN   Extremoz                      70.452             306,9             986,5       221,5%        94,4%         10
+MS   Sidrolândia                   50.079           1.331,4           4.102,3       208,1%       133,5%          8
+GO   Cristalina                    67.922           1.941,9           5.707,7       193,9%       104,7%         25
+MA   Balsas                       106.332           2.627,8           7.529,8       186,5%       101,3%         22
+BA   Campo Formoso                 75.311             612,0           1.617,8       164,4%        80,9%         46
+PR   Campina Grande do Sul         51.154           1.098,9           2.871,8       161,3%        88,6%         38
+PI   Altos                         50.509             301,9             764,9       153,4%       103,5%          6
+AC   Cruzeiro do Sul               99.404           1.060,5           2.680,1       152,7%       104,8%          2
+RR   Boa Vista                    500.965           7.581,1          18.234,2       140,5%       140,5%          1
+SE   Tobias Barreto                52.943             481,1           1.150,0       139,0%        59,6%          7
+AL   Rio Largo                     97.742             855,8           2.032,8       137,5%        84,9%         10
+RO   Vilhena                      110.708           2.185,5           5.115,8       134,1%       110,9%          7
+TO   Porto Nacional                70.507           1.372,0           3.195,9       132,9%       113,0%          5
+AM   Tefé                          81.046             711,0           1.619,5       127,8%        92,2%         13
+RS   Canela                        50.717             905,6           1.959,7       116,4%        72,5%         46
+AP   Macapá                       491.987           9.126,4          18.470,9       102,4%        97,4%          2
+PB   Queimadas                     51.156             411,1             788,7        91,9%        71,1%         11
+DF   Brasília                   3.009.996         215.612,9         365.669,1        69,6%        69,6%          1
+---  ------------------------  ----------  ----------------  ----------------  -----------  -----------  ---------
+27 linha(s)
+
+LEITURA DO RESULTADO: o crescimento e nominal (a precos correntes) e portanto
+inclui inflacao; o que importa aqui e a comparacao entre municipios no mesmo
+periodo. O ranking e dominado por cidades que receberam um unico grande vetor
+economico: petroleo e royalties (Saquarema/RJ, com crescimento de mais de 30
+vezes, e Sao Sebastiao/SP), mineracao (Canaa dos Carajas/PA, da mina S11D),
+fronteira agricola (Campo Novo do Parecis/MT, Cristalina/GO, Balsas/MA) e
+polos logisticos e industriais (Extrema/MG, Araquari/SC, Goiana/PE).
+
+Vale cruzar com a consulta 2 da Base 1: varias dessas cidades campeas de
+crescimento do PIB continuam com alta proporcao de familias no Bolsa Familia.
+O PIB mede o que se produz no territorio, nao o que chega as familias.
+

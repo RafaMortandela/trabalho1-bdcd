@@ -1,0 +1,44 @@
+
+====================================================================================
+ CRIACAO DOS INDICES
+====================================================================================
+
+  pagamentos_bf       {"cod_ibge":1,"competencia":1,"valor":-1}           0.0s  -> idx_municipio_competencia_valor
+  pagamentos_bf       {"uf":1,"competencia":1}                            102.1s  -> idx_uf_competencia
+  pagamentos_bf       {"competencia":1,"referencia":1}                    97.7s  -> idx_competencia_referencia
+  municipios_ibge     {"uf_sigla":1,"populacao_2026":-1,"nome":1}         0.0s  -> idx_uf_populacao_nome
+  municipios_ibge     {"nome_norm":1,"uf_sigla":1}                        0.0s  -> idx_nome_norm_uf
+  municipios_ibge     {"pib_per_capita":-1}                               0.0s  -> idx_pib_per_capita
+  municipios_ibge     {"nome":"text"}                                     0.1s  -> idx_texto_nome
+  pib_serie_ibge      {"cod_ibge":1,"ano":1}                              0.1s  -> idx_municipio_ano
+  pib_serie_ibge      {"ano":1,"pib_mil_reais":-1}                        0.1s  -> idx_ano_pib
+  de_para_siafi_ibge  {"uf":1,"cod_siafi":1}                              0.0s  -> idx_uf_siafi
+  de_para_siafi_ibge  {"cod_ibge":1}                                      0.0s  -> idx_cod_ibge
+
+====================================================================================
+ INDICES DO BANCO E ESPACO OCUPADO
+====================================================================================
+
+de_para_siafi_ibge  (0.3 MB de dados)
+  _id_                                {"_id":1}                                               0.1 MB
+  idx_uf_siafi                        {"uf":1,"cod_siafi":1}                                  0.1 MB
+  idx_cod_ibge                        {"cod_ibge":1}                                          0.1 MB
+
+municipios_ibge  (0.6 MB de dados)
+  _id_                                {"_id":1}                                               0.1 MB
+  idx_uf_populacao_nome               {"uf_sigla":1,"populacao_2026":-1,"nome":1}             0.2 MB
+  idx_nome_norm_uf                    {"nome_norm":1,"uf_sigla":1}                            0.1 MB
+  idx_pib_per_capita                  {"pib_per_capita":-1}                                   0.1 MB
+  idx_texto_nome                      {"_fts":"text","_ftsx":1}                               0.1 MB
+
+pagamentos_bf  (3232.0 MB de dados)
+  _id_                                {"_id":1}                                             601.2 MB
+  idx_municipio_competencia_valor     {"cod_ibge":1,"competencia":1,"valor":-1}             549.7 MB
+  idx_uf_competencia                  {"uf":1,"competencia":1}                              255.3 MB
+  idx_competencia_referencia          {"competencia":1,"referencia":1}                      255.0 MB
+
+pib_serie_ibge  (2.2 MB de dados)
+  _id_                                {"_id":1}                                               0.5 MB
+  idx_municipio_ano                   {"cod_ibge":1,"ano":1}                                  0.4 MB
+  idx_ano_pib                         {"ano":1,"pib_mil_reais":-1}                            0.6 MB
+

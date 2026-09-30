@@ -1,0 +1,151 @@
+
+====================================================================================================
+ ITEM (g) BASE 1 - indice { cod_ibge: 1, competencia: 1, valor: -1 }
+====================================================================================================
+
+CONSULTA ALVO (a mesma que o aplicativo executa ao abrir a ficha de um
+municipio): as parcelas pagas em um municipio em uma competencia,
+ordenadas da maior para a menor.
+
+  db.pagamentos_bf
+    .find({ cod_ibge: 3509502, competencia: 202608 })
+    .sort({ valor: -1 })
+
+Total de documentos na colecao: 57.174.504
+
+-- 1) Removendo o indice, se existir de execucao anterior ------------------------------------------
+  indice removido
+
+-- 2) PLANO ANTES DO INDICE ------------------------------------------------------------------------
+
+SEM INDICE:
+  plano de execucao      : SORT <- COLLSCAN
+  indice utilizado       : (nenhum)
+  tempo de execucao      : 39.501 ms
+  documentos examinados  : 57.174.504
+  chaves de indice lidas : 0
+  documentos retornados  : 53.166
+
+-- 3) Criando o indice composto --------------------------------------------------------------------
+  indice 'idx_municipio_competencia_valor' criado em 124,3 s
+
+-- 4) PLANO DEPOIS DO INDICE -----------------------------------------------------------------------
+
+COM INDICE:
+  plano de execucao      : FETCH <- IXSCAN
+  indice utilizado       : idx_municipio_competencia_valor
+  tempo de execucao      : 87 ms
+  documentos examinados  : 53.166
+  chaves de indice lidas : 53.166
+  documentos retornados  : 53.166
+
+COMPARACAO
+                                    SEM INDICE            COM INDICE
+  ------------------------------------------------------------------
+  plano (estagio final)                   SORT                 FETCH
+  tempo (ms)                            39.501                    87
+  docs examinados                   57.174.504                53.166
+  chaves examinadas                          0                53.166
+  docs retornados                       53.166                53.166
+
+  ganho de tempo             : 454,0x mais rapido
+  reducao de docs examinados : 99,91%
+  seletividade antes  (retornados / examinados): 0,0930%
+  seletividade depois (retornados / examinados): 100,0000%
+
+g1) HOUVE MELHORA? Sim, e de ordem de grandeza.
+g2) POR QUE?
+  Sem indice o MongoDB só tem um caminho: COLLSCAN, ou seja, ler os
+  57.174.504 documentos da colecao um a um para
+  testar o filtro, e depois ainda ordenar em memoria (estagio SORT).
+  Com o indice composto { cod_ibge, competencia, valor } as chaves estao
+  fisicamente ordenadas na arvore B, entao o servidor desce direto ao
+  ponto em que cod_ibge e competencia batem (IXSCAN) e le apenas as
+  53.166 chaves daquele intervalo. A ordem dos campos
+  no indice segue a regra igualdade -> ordenacao: cod_ibge e competencia
+  entram por igualdade e valor:-1 ja devolve as parcelas ordenadas, o que
+  elimina o estagio de ordenacao em memoria.
+
+====================================================================================================
+ ITEM (g) BASE 2 - indice { uf_sigla: 1, populacao_2026: -1, nome: 1 }
+====================================================================================================
+
+CONSULTA ALVO: os municipios de um estado, do mais populoso para o menos,
+projetando apenas nome e populacao (sem o _id).
+
+  db.municipios_ibge
+    .find({ uf_sigla: "SP" }, { _id: 0, nome: 1, populacao_2026: 1 })
+    .sort({ populacao_2026: -1 })
+
+Total de documentos na colecao: 5.571
+
+-- 1) Removendo o indice, se existir de execucao anterior ------------------------------------------
+  indice removido
+
+-- 2) PLANO ANTES DO INDICE ------------------------------------------------------------------------
+
+SEM INDICE:
+  plano de execucao      : SORT <- PROJECTION_SIMPLE <- COLLSCAN
+  indice utilizado       : (nenhum)
+  tempo de execucao      : 6 ms
+  documentos examinados  : 5.571
+  chaves de indice lidas : 0
+  documentos retornados  : 645
+
+-- 3) Criando o indice composto --------------------------------------------------------------------
+  indice 'idx_uf_populacao_nome' criado
+
+-- 4) PLANO DEPOIS DO INDICE -----------------------------------------------------------------------
+
+COM INDICE:
+  plano de execucao      : PROJECTION_COVERED <- IXSCAN
+  indice utilizado       : idx_uf_populacao_nome
+  tempo de execucao      : 2 ms
+  documentos examinados  : 0
+  chaves de indice lidas : 645
+  documentos retornados  : 645
+
+COMPARACAO
+                                    SEM INDICE            COM INDICE
+  ------------------------------------------------------------------
+  plano (estagio final)                   SORT    PROJECTION_COVERED
+  tempo (ms)                                 6                     2
+  docs examinados                        5.571                     0
+  chaves examinadas                          0                   645
+  docs retornados                          645                   645
+
+  ganho de tempo             : 3,0x mais rapido
+  reducao de docs examinados : 100,00%
+  seletividade antes  (retornados / examinados): 11,5778%
+  seletividade depois (retornados / examinados): somente indice (0 documentos lidos)
+
+g1) HOUVE MELHORA? Sim, mas o ganho de tempo absoluto e pequeno - e isso
+    e esperado.
+g2) POR QUE?
+  A colecao tem apenas 5.571 documentos e cabe inteira em memoria, logo
+  um COLLSCAN ja custava poucos milissegundos. O que o indice muda de
+  fato aqui e a QUANTIDADE DE TRABALHO: em vez de examinar todos os
+  documentos e ordenar em memoria, o servidor le apenas as chaves da UF
+  pedida, ja na ordem da populacao.
+  Alem disso a projecao pede exatamente campos que estao no indice
+  (uf_sigla, populacao_2026, nome) e exclui o _id: o plano vira
+  PROJECTION_COVERED e documentos examinados cai para ZERO - a resposta
+  sai apenas do indice, sem tocar nos documentos. E o caso de consulta
+  coberta (covered query).
+  Licao geral: indice compensa quando reduz documentos examinados; o
+  beneficio em tempo cresce com o tamanho da colecao, e por isso ele e
+  dramatico na base de 57 milhoes de pagamentos e modesto nesta.
+
+
+====================================================================================================
+ INDICES EXISTENTES APOS O ITEM (g)
+====================================================================================================
+
+pagamentos_bf:
+  _id_                                {"_id":1}
+  idx_municipio_competencia_valor     {"cod_ibge":1,"competencia":1,"valor":-1}
+
+municipios_ibge:
+  _id_                                {"_id":1}
+  idx_uf_populacao_nome               {"uf_sigla":1,"populacao_2026":-1,"nome":1}
+

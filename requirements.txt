@@ -1,0 +1,13 @@
+# Versoes efetivamente usadas no trabalho (Python 3.14, Ubuntu 26.04)
+
+# Acesso ao MongoDB e analise
+pymongo==4.18.2
+pandas==3.0.6
+matplotlib==3.11.2
+requests==2.34.2
+
+# Notebook (itens h e i)
+notebook==7.6.3
+nbconvert==7.17.1
+nbformat==5.11.1
+ipykernel==7.3.0

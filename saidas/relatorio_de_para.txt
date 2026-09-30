@@ -1,0 +1,44 @@
+RELATORIO DE QUALIDADE DO DE-PARA SIAFI -> IBGE
+==============================================================
+Municipios distintos no Portal da Transparencia : 5571
+Municipios casados com o cadastro do IBGE       : 5571 (100.00%)
+Nao casados                                     : 0
+
+Casamentos por metodo:
+  exato           5539 (99.43%)
+  similaridade      21 (0.38%)
+  excecao           11 (0.20%)
+
+Casos resolvidos fora do casamento exato (32):
+  BA  3005 MUQUEM DE SAO FRANCISCO            -> MUQUEM DO SAO FRANCISCO            [similaridade, score 0.9565]
+  BA  3869 SANTA TERESINHA                    -> SANTA TEREZINHA                    [similaridade, score 0.9333]
+  CE  1427 ITAPAGE                            -> ITAPAJE                            [similaridade, score 0.8571]
+  MG  4109 BARAO DE MONTE ALTO                -> BARAO DO MONTE ALTO                [similaridade, score 0.9474]
+  MG  4177 BRASOPOLIS                         -> BRAZOPOLIS                         [similaridade, score 0.9]
+  MG  4457 DONA EUSEBIA                       -> DONA EUZEBIA                       [similaridade, score 0.9167]
+  MG  5303 SAO THOME DAS LETRAS               -> SAO TOME DAS LETRAS                [similaridade, score 0.9744]
+  MT  9139 POXOREO                            -> POXOREU                            [similaridade, score 0.8571]
+  MT  9155 SANTO ANTONIO DO LEVERGER          -> SANTO ANTONIO DE LEVERGER          [similaridade, score 0.96]
+  PA   377 ELDORADO DOS CARAJAS               -> ELDORADO DO CARAJAS                [similaridade, score 0.9744]
+  PA   529 SANTA ISABEL DO PARA               -> SANTA IZABEL DO PARA               [similaridade, score 0.95]
+  PB   522 SAO DOMINGOS DE POMBAL             -> SAO DOMINGOS                       [excecao, score 1.0]
+  PB  2209 SERIDO                             -> SAO VICENTE DO SERIDO              [excecao, score 1.0]
+  PE  2331 BELEM DE SAO FRANCISCO             -> BELEM DO SAO FRANCISCO             [similaridade, score 0.9545]
+  PE  3001 DISTRITO ESTADUAL DE FERNANDO DE NORONHA -> FERNANDO DE NORONHA                [excecao, score 1.0]
+  PE  2437 IGUARACI                           -> IGUARACY                           [similaridade, score 0.875]
+  PE  2469 LAGOA DO ITAENGA                   -> LAGOA DE ITAENGA                   [similaridade, score 0.9375]
+  RJ  5875 PARATI                             -> PARATY                             [excecao, score 1.0]
+  RJ  5917 TRAJANO DE MORAIS                  -> TRAJANO DE MORAES                  [similaridade, score 0.9412]
+  RN  1603 ACU                                -> ASSU                               [excecao, score 1.0]
+  RN  1623 ARES                               -> AREZ                               [excecao, score 1.0]
+  RN  1625 CAMPO GRANDE (EX-AUGUSTO SEVERO)   -> CAMPO GRANDE                       [excecao, score 1.0]
+  RN  1805 SERRA CAIADA (EX-PRESIDENTE JUSCELINO) -> SERRA CAIADA                       [excecao, score 1.0]
+  RR   315 SAO LUIZ                           -> SAO LUIZ DO ANAUA                  [excecao, score 1.0]
+  RS  8845 SANTANA DO LIVRAMENTO              -> SANT ANA DO LIVRAMENTO             [similaridade, score 0.9767]
+  SE  3101 AMPARO DE SAO FRANCISCO            -> AMPARO DO SAO FRANCISCO            [similaridade, score 0.9565]
+  SE  3151 GRACHO CARDOSO                     -> GRACCHO CARDOSO                    [similaridade, score 0.9655]
+  SP  6423 FLORINIA                           -> FLORINEA                           [similaridade, score 0.875]
+  SP  7101 SAO LUIS DO PARAITINGA             -> SAO LUIZ DO PARAITINGA             [similaridade, score 0.9545]
+  TO  9321 COUTO DE MAGALHAES                 -> COUTO MAGALHAES                    [similaridade, score 0.9091]
+  TO   345 FORTALEZA DO TABOCAO               -> TABOCAO                            [excecao, score 1.0]
+  TO  9691 SAO VALERIO DA NATIVIDADE          -> SAO VALERIO                        [excecao, score 1.0]

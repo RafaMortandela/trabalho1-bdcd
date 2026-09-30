@@ -1,0 +1,15 @@
+======================================================================
+ Carga com PyMongo - insert_many(ordered=False)
+======================================================================
+  arquivo : pagamentos_202606.jsonl
+  colecao : brasil_bf.pagamentos_bf_teste_pymongo
+  lote    : 50.000 documentos
+  limite  : 1.000.000
+
+    500.000 documentos (79.460 doc/s)
+
+  inseridos : 1.000.000 documentos
+  tempo     : 12.3 s
+  vazao     : 81.333 documentos/s
+  conferido : 1.000.000 no banco
+  colecao pagamentos_bf_teste_pymongo removida (era so para a medicao)

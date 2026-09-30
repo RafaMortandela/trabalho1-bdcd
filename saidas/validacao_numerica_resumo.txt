@@ -1,0 +1,14 @@
+13 de 13 verificacoes aprovadas
+OK	competencia 202606	CSV: 19.217.521 linhas | MongoDB: 19.217.521 documentos
+OK	competencia 202607	CSV: 19.147.563 linhas | MongoDB: 19.147.563 documentos
+OK	competencia 202608	CSV: 18.809.420 linhas | MongoDB: 18.809.420 documentos
+OK	total das tres competencias	CSV: 57.174.504 | MongoDB: 57.174.504
+OK	competencia 202606: 27 UFs conferidas	maior diferenca encontrada: R$ 0.0000 (tolerancia R$ 0.05)
+OK	competencia 202607: 27 UFs conferidas	maior diferenca encontrada: R$ 0.0000 (tolerancia R$ 0.05)
+OK	competencia 202608: 27 UFs conferidas	maior diferenca encontrada: R$ 0.0000 (tolerancia R$ 0.05)
+OK	competencia 202606	soma das 27 UFs: R$ 12.992.522.373,00 | total nacional: R$ 12.992.522.373,00
+OK	competencia 202607	soma das 27 UFs: R$ 12.966.159.697,00 | total nacional: R$ 12.966.159.697,00
+OK	competencia 202608	soma das 27 UFs: R$ 12.763.249.759,00 | total nacional: R$ 12.763.249.759,00
+OK	populacao estimada 2026	soma dos 5.570 municipios: 214.211.951 | Brasil (nivel N1 da API): 214.211.951 | diferenca: 0 habitantes (0.0000%)
+OK	Acre, competencia 202606	parcelas regulares no CSV: 126.238 | no MongoDB: 126.238
+OK	todo cod_ibge dos pagamentos existe em municipios_ibge	pagamentos sem cod_ibge: 0
