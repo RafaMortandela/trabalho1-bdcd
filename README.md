@@ -3,7 +3,7 @@
 Cruzamento de **57 milhões de pagamentos** do Novo Bolsa Família (Portal da
 Transparência) com **população e PIB municipal** do IBGE, em **MongoDB**.
 
-Trabalho da disciplina de Banco de Dados Não Convencionais.
+Trabalho da disciplina de Banco de Dados para Ciência de Dados - DC UFSCar - Profa. Marcela Ribeiro Xavier.
 
 | Integrante | RA |
 |---|---|
